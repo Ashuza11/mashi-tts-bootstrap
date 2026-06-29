@@ -1,0 +1,8 @@
+models/checkpoints/
+data/raw/
+__pycache__/
+*.pyc
+.env
+*.egg-info/
+dist/
+.ipynb_checkpoints/
