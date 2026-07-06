@@ -1,5 +1,11 @@
 models/checkpoints/
 data/raw/
+
+# dataset stays off GitHub — distribute via Drive / HuggingFace
+data/mashi_dataset/
+To_Segment/
+Segmented_dataset/
+results/
 __pycache__/
 *.pyc
 .env

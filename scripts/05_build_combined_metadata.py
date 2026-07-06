@@ -1,8 +1,8 @@
 """
 Combine all three speakers into one metadata.csv for multi-speaker TTS training.
 
-Reads from data/manual_segments/ (or auto_segments/) and produces:
-  data/{track}_segments/metadata_combined.csv
+Reads from data/mashi_dataset/ and produces:
+  data/mashi_dataset/metadata_combined.csv
 
 CSV columns:
   file        — wav filename (relative to audio/ folder)
@@ -12,8 +12,7 @@ CSV columns:
   duration_s  — clip length in seconds
 
 Usage:
-  python scripts/05_build_combined_metadata.py --track manual
-  python scripts/05_build_combined_metadata.py --track auto
+  python scripts/05_build_combined_metadata.py
 """
 
 import os
@@ -43,8 +42,7 @@ def infer_meta(filename):
     return domain, speaker
 
 
-def build(track):
-    seg_dir  = f"data/{track}_segments"
+def build(seg_dir="data/mashi_dataset"):
     clip_dir = os.path.join(seg_dir, "audio")
     txt_dir  = os.path.join(seg_dir, "transcripts")
 
@@ -90,7 +88,7 @@ def build(track):
     out = os.path.join(seg_dir, "metadata_combined.csv")
     df.to_csv(out, index=False)
 
-    print(f"\nCombined dataset — track [{track}]")
+    print(f"\nCombined dataset — {seg_dir}")
     print(f"  Total clips  : {len(df)}")
     print(f"  Total duration: {df.duration_s.sum()/60:.1f} min")
     print()
@@ -131,6 +129,6 @@ def build(track):
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    p.add_argument("--track", choices=["manual", "auto"], required=True)
+    p.add_argument("--dir", default="data/mashi_dataset")
     args = p.parse_args()
-    build(args.track)
+    build(args.dir)

@@ -2,26 +2,31 @@
 
 **Bootstrapping TTS for Mashi: Exploring Cross-Lingual Transfer from Kinyarwanda for a Low-Resource Bantu Language**
 
-Mashi (also called Bashi or Shi, ISO 639-3: `shi`) is spoken by approximately 3 million people in South Kivu, eastern DRC. No TTS, ASR, or NLP tools exist for this language. This project fine-tunes a multilingual TTS model on the first Mashi speech dataset and compares two data curation pipelines — automatic and manual — as a methodological contribution for low-resource languages.
+Mashi (also called Bashi or Shi, ISO 639-3: `shi`) is spoken by approximately 3 million people in South Kivu, eastern DRC. No TTS, ASR, or NLP tools exist for this language. This project builds the first Mashi speech dataset — 3 speakers, 5 domains, 723 curated clips — and fine-tunes a multilingual TTS model (Coqui XTTS v2) on it as a methodological contribution for low-resource languages.
 
 ---
 
-## Research questions
+## Research question
 
-1. Can fine-tuning a multilingual TTS model on fewer than 90 minutes of Mashi audio produce intelligible Mashi speech?
-2. Does manual native-speaker segmentation produce better TTS output than automatic forced alignment (WhisperX) on the same data?
+Can fine-tuning a multilingual TTS model on roughly one hour of Mashi audio produce intelligible Mashi speech?
+
+> **Scope note (July 2026):** the originally planned Track A (automatic WhisperX
+> forced alignment) was dropped for time reasons. The project uses a single
+> curated dataset built by silence-based splitting at natural pauses, verified
+> and transcribed by the collector.
 
 ---
 
 ## Key contribution
 
-**Two-pipeline comparison for data-scarce TTS:**
-- **Track A (Automatic):** WhisperX forced alignment on chapter-level recordings → clips
-- **Track B (Manual):** Native-speaker segmentation at natural speech boundaries + silence-based splitting
+**Dataset contribution:** The first Mashi speech dataset — 3 speakers, 5 domains,
+**723 clips / 67 minutes** of segmented, transcribed, TTS-ready audio
+(from ~10 hours of raw Bible audio plus vocabulary, story, and clock-time recordings).
 
-Fine-tuning is run identically on both tracks. Output quality is compared qualitatively and (if possible) with MOS scores from native listeners.
-
-**Dataset contribution:** The first Mashi speech dataset — 3 speakers, 5 domains, ~10 hours of raw audio (Bible) plus ~34 minutes of vocabulary and narrative recordings.
+**Method contribution:** a reproducible low-resource curation pipeline —
+silence-based segmentation at natural speech pauses (scripts 07/09), component-based
+synthesis of clock-time clips from web audio (script 08), and casing/apostrophe
+normalization (script 06) — all cutting only at silences so no word is ever split.
 
 ---
 
@@ -80,8 +85,15 @@ Fine-tuning is run identically on both tracks. Output quality is compared qualit
 ## Model
 
 **Base model:** [Coqui XTTS v2](https://github.com/coqui-ai/TTS) — multilingual, few-shot capable, runs on Google Colab T4 GPU.
-**Transfer language proxy:** Swahili (`sw`) — the closest Bantu language supported by XTTS v2.
-**Why not Kinyarwanda directly:** XTTS v2 does not include a Kinyarwanda checkpoint; Swahili is used as the nearest available Bantu proxy. The poster title refers to the broader cross-lingual transfer concept across Bantu languages.
+**Transfer language proxy:** Spanish (`es`). XTTS v2 supports no Bantu language
+(its 17 languages include neither Swahili nor Kinyarwanda), so the closest
+*phonetic* proxy is used instead: Spanish shares Mashi's five pure vowels
+/a e i o u/ and open CV syllable structure. The Spanish text frontend also
+expands the clock-time digits ("9:05") deterministically, keeping training and
+inference consistent.
+**Why not Kinyarwanda/Swahili directly:** neither has an XTTS v2 checkpoint. The
+poster title refers to the broader cross-lingual transfer concept across Bantu
+languages.
 
 ---
 
@@ -90,63 +102,75 @@ Fine-tuning is run identically on both tracks. Output quality is compared qualit
 ```
 mashi-tts-bootstrap/
 ├── data/
-│   ├── raw/                          # full Dataset_Mashi/ — gitignored, upload to Drive
-│   ├── manual_segments/              # Track B: segmented clips + transcripts
-│   │   ├── audio/
-│   │   ├── transcripts/
-│   │   └── speaker_references/       # reference wavs per speaker (auto-generated)
-│   └── auto_segments/                # Track A: WhisperX clips + transcripts
-│       ├── audio/
-│       ├── transcripts/
-│       └── alignment_json/
+│   └── mashi_dataset/                # THE DATASET — upload this folder to Drive
+│       ├── audio/                    # 723 wav clips, 22050 Hz mono, 2.0–11.3 s
+│       ├── transcripts/              # one .txt per clip, normalized Mashi text
+│       ├── metadata_combined.csv     # full record: file, text, speaker, domain, duration
+│       ├── metadata_train.csv        # coqui format (audio_file|text|speaker_name) — 687 clips
+│       ├── metadata_eval.csv         # held-out eval set — 36 clips
+│       └── speaker_references/       # ref_bib/dav/mrl.wav for voice conditioning
 ├── scripts/
-│   ├── 01_whisperx_align.py          # Track A: forced alignment
-│   ├── 02_extract_clips.py           # Track A: extract WAV clips from JSON
-│   ├── 03_build_metadata.py          # build metadata.csv per track
-│   ├── 04_split_on_silence.py        # Track B: silence-based split for dav vocabulary
-│   └── 05_build_combined_metadata.py # merge all 3 speakers into one CSV with speaker/domain columns
+│   ├── 01–04  (legacy: WhisperX track + early splitter — kept for reference)
+│   ├── 05_build_combined_metadata.py # build metadata_combined.csv + speaker references
+│   ├── 06_normalize_text.py          # lowercase + sentence-case transcripts
+│   ├── 07_segment_short_domains.py   # segment dav vocabulary + mrl recordings
+│   ├── 08_build_mrl_clock_clips.py   # build clock clips from murhula.com components
+│   ├── 09_segment_stories.py         # segment narratives (stories + Bible chapters)
+│   └── 10_make_train_eval_csv.py     # stratified train/eval split in coqui format
 ├── notebooks/
-│   ├── 01_forced_alignment_colab.ipynb   # Track A — run on Colab
-│   └── 02_finetune_xtts_colab.ipynb      # fine-tune XTTS v2 — run on Colab, set TRACK variable
+│   └── 02_finetune_xtts_colab.ipynb  # fine-tune XTTS v2 — run on Colab
 ├── models/checkpoints/               # saved checkpoints — gitignored
-├── results/
-│   ├── manual_samples/               # generated audio — Track B model
-│   └── auto_samples/                 # generated audio — Track A model
+├── results/samples/                  # generated test audio
 └── docs/
     ├── DATA_CARD.md                  # full dataset documentation
-    ├── combined_dataset_guide.md     # how to segment and combine all 3 speakers
-    └── manual_segmentation_guide.md  # Audacity step-by-step for Bible chapters
+    ├── combined_dataset_guide.md     # how the dataset was built (record + extension guide)
+    └── manual_segmentation_guide.md  # Audacity step-by-step (reference)
 ```
+
+Raw source audio (`To_Segment/`) and the per-domain working copy
+(`Segmented_dataset/`) are archived outside the repository; the murhula.com
+clock components are preserved with them for reproducibility.
 
 ---
 
 ## Quickstart (Google Colab)
 
-**Before you start:** Complete manual segmentation following `docs/combined_dataset_guide.md`, then upload `data/` to Google Drive under `My Drive/mashi-tts-bootstrap/`.
+The dataset is already segmented, transcribed, and split — no preparation needed.
 
-**Track A — Automatic:**
-1. Open `notebooks/01_forced_alignment_colab.ipynb` → Runtime → Run all
-2. Open `notebooks/02_finetune_xtts_colab.ipynb` → set `TRACK = 'auto'` → Run all
+1. Upload `data/mashi_dataset/` to Google Drive under `My Drive/mashi-tts-bootstrap/data/`
+2. Open the notebook in Colab:
+   [`02_finetune_xtts_colab.ipynb`](https://colab.research.google.com/github/Ashuza11/mashi-tts-bootstrap/blob/main/notebooks/02_finetune_xtts_colab.ipynb)
+3. Runtime → Change runtime type → **GPU (T4)** → Run all
+4. Listen to the generated samples in `results/samples/` on Drive
 
-**Track B — Manual:**
-1. Follow `docs/combined_dataset_guide.md` to segment all 3 speakers locally
-2. Run `python scripts/05_build_combined_metadata.py --track manual`
-3. Upload `data/manual_segments/` to Drive
-4. Open `notebooks/02_finetune_xtts_colab.ipynb` → set `TRACK = 'manual'` → Run all
+To rebuild the dataset from the raw audio archive: scripts 07 → 08 → 09,
+copy the segments into `data/mashi_dataset/{audio,transcripts}`, then
+scripts 06 → 05 → 10.
 
 ---
 
-## Expected training dataset size
+## Final training dataset
 
-| Speaker | Domain | Est. clips | Est. minutes |
+| Speaker | Domain | Clips | Minutes |
 |---|---|---|---|
-| bib | Bible (ch01–04) | ~320 | ~52 |
-| dav | Short stories | ~60 | ~11 |
-| dav | Numbers | ~30 | ~4 |
-| dav | Family | ~20 | ~3 |
-| dav | Calendar | ~25 | ~4 |
-| mrl | Time expressions | ~15 | ~8 |
-| **Total** | | **~470 clips** | **~82 minutes** |
+| bib | Bible — Genesis ch01–04 | 183 | 24.2 |
+| dav | Short stories | 109 | 12.5 |
+| dav | Numbers | 39 | 3.5 |
+| dav | Family | 25 | 3.0 |
+| dav | Calendar | 31 | 3.3 |
+| mrl | Clock times | 336 | 20.9 |
+| **Total** | | **723 clips** | **67.4 min** |
+
+All clips are 2.0–11.3 s, mono 22050 Hz WAV, cut only at natural pauses.
+Split: 687 train / 36 eval (stratified per speaker+domain, seed 42).
+
+> **mrl provenance note:** the clock-time domain is built from the 95 component
+> announcements used by murhula.com's talking clock (18 hours, 59 minutes,
+> 18 exact-hour phrases; hours 1–6 do not exist on the site). 13 times were
+> screen-recorded; the remaining clips are unique hour+minute combinations
+> assembled the same way the site plays them (permission: Marius NSHOMBO).
+> Per-speaker minutes for mrl therefore recombine 95 unique recordings —
+> disclosed here to keep the totals honest.
 
 ---
 

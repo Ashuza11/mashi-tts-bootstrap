@@ -1,6 +1,13 @@
 # Combined 3-Speaker Dataset Guide
 ## Mashi TTS — Training Data Curation
 
+> **STATUS (July 2026): segmentation and transcription are COMPLETE.**
+> The final dataset (723 clips, 67.4 min) lives in `data/mashi_dataset/`
+> with `metadata_train.csv` / `metadata_eval.csv` ready for the fine-tuning
+> notebook. The steps below are kept as the record of how it was built and
+> how to extend it (e.g. adding Bible chapters ch05+ with
+> `scripts/09_segment_stories.py --in_dir ... --out_dir ...`).
+
 ---
 
 ## Why combine all three voices
@@ -51,7 +58,7 @@ Target: ~300–400 clips, ~55–60 minutes usable audio.
 Text is already in `Dataset_Mashi/Bible/transcripts/shi_bible_bib_ch01.txt` etc.
 Match each exported Audacity clip to the corresponding verse.
 
-Output goes to: `data/manual_segments/audio/` and `data/manual_segments/transcripts/`
+Output goes to: `data/mashi_dataset/audio/` and `data/mashi_dataset/transcripts/`
 
 ---
 
@@ -111,7 +118,7 @@ python scripts/04_split_on_silence.py --input ... --min_silence_ms 400 --silence
 ### Step 4: Fill in the transcript files
 
 After the script runs, it creates one .txt placeholder per clip in
-`data/manual_segments/transcripts/`.
+`data/mashi_dataset/transcripts/`.
 
 Open the PDF source document alongside each clip:
 - Numbers: `Dataset_Mashi/Numbers/documents/shi_numbers_dav_source_text.pdf`
@@ -204,20 +211,19 @@ Nsaha mulingânye na eshaba na kasharhu z'edakika.
 ## Section 5 — Combining everything into one training dataset
 
 After completing all sections above, you will have clips from all 3 speakers
-in `data/manual_segments/audio/` and matching texts in `data/manual_segments/transcripts/`.
+in `data/mashi_dataset/audio/` and matching texts in `data/mashi_dataset/transcripts/`.
 
 ### Step 1: Build the unified metadata file
 ```
-python scripts/03_build_metadata.py --track manual
-python scripts/05_build_combined_metadata.py --track manual
+python scripts/05_build_combined_metadata.py
+python scripts/10_make_train_eval_csv.py
 ```
 
 This creates:
-- `data/manual_segments/metadata.csv` — basic file + text pairs
-- `data/manual_segments/metadata_combined.csv` — with speaker and domain columns
-- `data/manual_segments/speaker_references/ref_bib.wav` — reference voice for bib
-- `data/manual_segments/speaker_references/ref_dav.wav` — reference voice for dav
-- `data/manual_segments/speaker_references/ref_mrl.wav` — reference voice for mrl
+- `data/mashi_dataset/metadata_combined.csv` — with speaker and domain columns
+- `data/mashi_dataset/speaker_references/ref_bib.wav` — reference voice for bib
+- `data/mashi_dataset/speaker_references/ref_dav.wav` — reference voice for dav
+- `data/mashi_dataset/speaker_references/ref_mrl.wav` — reference voice for mrl
 
 ### Step 2: Verify the numbers
 
